@@ -10,7 +10,7 @@ from flask import Flask, request, session, g, render_template, redirect, url_for
 import re
 import socket
 import ipaddress
-from pathlib. import Path
+from pathlib import Path
 import secrets
 import logging
 
@@ -148,7 +148,7 @@ def memo():
     return render_template('memo.html', memos=memos)
 
 
-# SOLUTION 3: Resolve hostname and block private/loopback/link-local/reserved IPs
+# SOLUTION 2: Resolve hostname and block private/loopback/link-local/reserved IPs
 MAX_BYTES = 4096
 
 # resolve hostname to IP addresses and check whether any address is private/loopback/link-local/multicast/reserved, returning True if a disallowed IP is found.
@@ -172,7 +172,7 @@ def fetch():
     if request.method == 'POST':
         url = request.form.get('url', '').strip()
 
-        # SOLUTION 3: Only allow http/https schemes and disallow with host_resolves_to_disallowed_ip
+        # SOLUTION 2: Only allow http/https schemes and disallow with host_resolves_to_disallowed_ip
         parsed = urlparse(url)
     
         if parsed.scheme not in ('http', 'https'):
@@ -185,11 +185,11 @@ def fetch():
             content = 'Blocked URL (resolves to internal or disallowed IP address)'
             return render_template('fetch.html', url=url, content=content)
 
-        # VULNERABILITY 3: Server-Side Request Forgery
+        # VULNERABILITY 2: Server-Side Request Forgery
         try:
             # r = requests.get(url, timeout=10)
             # content = r.text[:4096]
-            # SOLUTION 3: Use a streamed request, limiting bytes read, and not allowing redirects
+            # SOLUTION 2: Use a streamed request, limiting bytes read, and not allowing redirects
             r = requests.get(url, timeout=10, allow_redirects=False, stream=True)
             buf = []
             read = 0
@@ -206,7 +206,7 @@ def fetch():
     return render_template('fetch.html', url=url, content=content)
 
 
-# SOLUTION 2: Input Validation
+# SOLUTION 3: Input Validation
 _HOSTNAME_RE = re.compile(r'^[A-Za-z0-9]([A-Za-z0-9\.-]{0,253}[A-Za-z0-9])?$')
 
 def is_valid_hostname(host: str) -> bool:
@@ -219,6 +219,7 @@ def is_valid_ip_or_hostname(value: str) -> bool:
     except ValueError:
         return is_valid_hostname(value)
 
+# @app.route('/Ping', methods=['GET', 'POST'], endpoint='ping')
 @app.route('/Ping', methods=['GET', 'POST'])
 def ping_host():
     ip_address = ''
@@ -243,9 +244,9 @@ def ping_host():
             return render_template('ping.html', ip=ip_address, result='Invalid hostname or IP')
 
         count_flag = '-n' if os.name == 'nt' else '-c'
-        # VULNERABILITY 2: Command Injection
+        # VULNERABILITY 3: Command Injection
         # command = ['ping', count_flag, '3', ip_address]
-        # SOLUTION 2: Build argv list (without shell) to avoid shell interpolation
+        # SOLUTION 3: Build argv list (without shell) to avoid shell interpolation
         command = ['ping', count_flag, '3', ip_address]
         try:
             completed = subprocess.run(
@@ -317,3 +318,4 @@ if __name__ == '__main__':
     # init_db()
     # app.run(host='0.0.0.0', port=5000, debug=True)
     app.run(host='0.0.0.0', port=int(os.getenv('PORT', 5000)), debug=DEBUG_MODE)
+    # app.run(host='0.0.0.0', port=int(os.getenv('PORT', 4000)), debug=DEBUG_MODE)
