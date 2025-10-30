@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Log Viewer</h1>
+<p>Inspect log files stored on the server.</p>
+<form class="form-card" method="get">
+    <div class="form-group">
+        <label class="form-label" for="filename">Filename</label>
+        <input class="input-field" type="text" id="filename" name="filename" value="{{ filename or '' }}" placeholder="user_log_01" required>
+    </div>
+    <div class="form-actions">
+        <button class="btn btn-primary" type="submit">Open File</button>
+    </div>
+</form>
+{% if error %}
+    <div class="message message-error">{{ error }}</div>
+{% endif %}
+{% if content %}
+    <h2>File Contents</h2>
+    <pre class="code-block">{{ content }}</pre>
+{% endif %}
+{% endblock %}

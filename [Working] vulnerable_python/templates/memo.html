@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Memo Board</h1>
+<p>Share quick notes with other participants.</p>
+<form class="form-card" method="post">
+    <div class="form-group">
+        <label class="form-label" for="content">New Memo</label>
+        <textarea class="textarea-field" id="content" name="content" required></textarea>
+    </div>
+    <div class="form-actions">
+        <button class="btn btn-primary" type="submit">Post Memo</button>
+    </div>
+</form>
+<div class="section-divider"></div>
+<h2>Recent Memos</h2>
+{% if memos %}
+    <div class="memo-list">
+        {% for memo in memos %}
+            <article class="memo-item">
+                {% if memo["created_at"] %}
+                <div class="memo-header">
+                    <time class="memo-timestamp" datetime="{{ memo['created_at'] }}">{{ memo["created_at"] }}</time>
+                </div>
+                {% endif %}
+                <div class="memo-body">{{ memo["content"]|safe }}</div>
+            </article>
+        {% endfor %}
+    </div>
+{% else %}
+    <p>No memos posted yet.</p>
+{% endif %}
+{% endblock %}

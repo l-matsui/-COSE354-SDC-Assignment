@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="hero">
+    <h3>Welcome to Secure Coding Practice!!</h3>
+    <p>Explore the features and try to find vulnerabilities!</p>
+
+    <div class="hero-actions">
+        <a class="btn btn-primary" href="{{ url_for('login') }}">Go to Login</a>
+        <a class="btn btn-secondary" href="{{ url_for('register') }}">Create Account</a>
+    </div>
+</section>
+{% endblock %}

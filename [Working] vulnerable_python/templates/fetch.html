@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Fetch Tool</h1>
+<p>Retrieve and review the contents of a remote resource.</p>
+<form class="form-card" method="post">
+    <div class="form-group">
+        <label class="form-label" for="url">URL</label>
+        <input class="input-field" type="text" id="url" name="url" value="{{ url or '' }}" placeholder="http://127.0.0.1:5000/Profile" required>
+    </div>
+    <div class="form-actions">
+        <button class="btn btn-primary" type="submit">Fetch</button>
+    </div>
+</form>
+{% if content %}
+    <h2>Response Preview</h2>
+    <pre class="code-block">{{ content }}</pre>
+{% endif %}
+{% endblock %}

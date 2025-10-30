@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Ping Service</h1>
+<p>Check the reachability of a host from the server.</p>
+<form class="form-card" method="post">
+    <div class="form-group">
+        <label class="form-label" for="ip">Host or IP Address</label>
+        <input class="input-field" type="text" id="ip" name="ip" value="{{ ip or '' }}" placeholder="8.8.8.8" required>
+    </div>
+    <div class="form-actions">
+        <button class="btn btn-primary" type="submit">Run Ping</button>
+    </div>
+</form>
+{% if result %}
+    <h2>Ping Output</h2>
+    <pre class="code-block">{{ result }}</pre>
+{% endif %}
+{% endblock %}
