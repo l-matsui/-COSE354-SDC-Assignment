@@ -19,7 +19,7 @@ void func(){
 
     // VULNERABILITY: strcmp() can cause issues if strings are not properly null-terminated
     // if (strcmp(seceret, "COSE354") == 0){
-    // SOLUTION: Use strncmp() with length limit
+    // SOLUTION: Use strncmp() with length limit 
     if (strncmp(seceret, "COSE354", sizeof(seceret)) == 0){
         printf("Please patch this code!\n");
     } else {

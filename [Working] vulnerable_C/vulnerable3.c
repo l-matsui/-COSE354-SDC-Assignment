@@ -13,20 +13,46 @@ static void show(const Account *a){
 }
 
 int deposit(Account *a, uint32_t amount){
-    if((int32_t)amount < 0) return -1;     
-	  a->balance += amount;
-	  return 0;
+    if((int32_t)amount < 0) return -1;
+    // VULNERABILITY: unsigned addition can lead to Integer Overflow 
+    // a->balance += amount;
+    // SOLUTION: check for overflow before addition
+    if (a->balance > UINT32_MAX - amount) {
+        return -2; // Overflow
+    }
+    a->balance += amount;
+    return 0;
 }
 
 int withdraw(Account *a, int32_t amount){
     if (amount <= 0) return -1;
+    // VULNERABILITY: unsigned subtraction can lead to Integer Underflow
+    // uint32_t new_balance = a->balance - amount;
+    // SOLUTION: check for underflow before subtraction
+    if (a->balance < (uint32_t)amount) {
+        return -2; // Underflow
+    }
     uint32_t new_balance = a->balance - amount;
-    if (new_balance < 0) return -2;
+    // now redundant check
+    // if (new_balance < 0) return -2;
     a->balance = new_balance;
     return 0; 
 }
 
 int adjust(Account *a, int32_t delta){
+    // VULNERABILITY: Signed to unsigned conversion can lead to Integer Overflow/Underflow
+    // uint32_t new_balance = a->balance + delta;
+    if (delta >= 0) {
+        // SOLUTION: Check for overflow
+        if (a->balance > UINT32_MAX - (uint32_t)delta) {
+            return -1; // Overflow
+        }
+    } else {
+        // SOLUTION: Check for underflow  
+        if (a->balance < (uint32_t)(-delta)) {
+            return -2; // Underflow
+        }
+    }
     uint32_t new_balance = a->balance + delta;
     a->balance = new_balance;
     return 0;
@@ -40,13 +66,18 @@ int main(){
     if(deposit(&a, 10)==0){
         printf("Success!\n");
         show(&a);
+    } else {
+        printf("Deposit failed - overflow prevented!\n");
     }
     printf("\n");
+    
     a.balance = 100;
     show(&a);
     if(withdraw(&a, 500) == 0){
         printf("Success!\n");
         show(&a);
+    } else {
+        printf("Withdraw failed - underflow prevented!\n");
     }
     printf("\n");
 
@@ -55,6 +86,8 @@ int main(){
     if(adjust(&a, -2000) == 0){
         printf("Success!\n");
         show(&a);
+    } else {
+        printf("Adjust failed - underflow prevented!\n");
     }
     
     return 0;

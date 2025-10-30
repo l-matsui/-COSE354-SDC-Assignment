@@ -9,13 +9,17 @@ typedef struct {
     int available_seats;
     int total_sold;
     char event_name[50];
+    // Add mutex to synchronize threads
+    pthread_mutex_t mutex;
 } TicketSystem;
 
 TicketSystem concert = {
     .ticket_id = 1,
     .available_seats = 10,
     .total_sold = 0,
-    .event_name = "SECURITY Concert"
+    .event_name = "SECURITY Concert",
+    // Init mutex
+    .mutex = PTHREAD_MUTEX_INITIALIZER
 };
 
 typedef struct {
@@ -29,9 +33,20 @@ void* book_ticket(void* arg) {
     
     printf("[%s] Checking availability...\n", user->name);
 
+    // VULNERABILITY: TOCTOU Race Condition
+    // if (concert.available_seats > 0) {
+    // SOLUTION: Use mutex
+    pthread_mutex_lock(&concert.mutex);
+    
     if (concert.available_seats > 0) {
         printf("[%s] Found available seat! Processing payment...\n", user->name);
-        usleep(500000); 
+        
+        // VULNERABILITY: Critical section without protection
+        // usleep(500000); 
+        // concert.available_seats--;
+        // concert.total_sold++;
+        // SOLUTION: Keep this section inside mutex protection
+        usleep(500000); // sim payment processing
         
         concert.available_seats--;
         concert.total_sold++;
@@ -41,12 +56,18 @@ void* book_ticket(void* arg) {
         printf("[%s] ✗ SOLD OUT!\n", user->name);
     }
     
+    // SOLUTION: Release mutex after critical section
+    pthread_mutex_unlock(&concert.mutex);
+    
     return NULL;
 }
 
 void print_info() {
+    // SOLUTION: Protect read operations too just because
+    pthread_mutex_lock(&concert.mutex);
     printf("Available Seats: %d\n", concert.available_seats);
     printf("Total Sold: %d\n", concert.total_sold);
+    pthread_mutex_unlock(&concert.mutex);
 }
 
 int main() {
@@ -77,6 +98,9 @@ int main() {
     if (concert.total_sold > 10) {
         printf("\nOversold by %d tickets!\n", concert.total_sold - 10);
     }
+    
+    // SOLUTION: Destroy mutex when done
+    pthread_mutex_destroy(&concert.mutex);
     
     return 0;
 }
