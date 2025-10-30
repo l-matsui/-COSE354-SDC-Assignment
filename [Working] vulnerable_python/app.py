@@ -1,11 +1,15 @@
 import os
 import sqlite3
 import subprocess
-from urllib.parse import unquote
+from urllib.parse import unquote, urlparse
 
 import requests
 from flask import Flask, request, session, g, render_template, redirect, url_for
 
+#Solution Imports
+import re
+import socket
+import ipaddress
 
 BASE_DIR = os.path.dirname(__file__)
 DB_PATH = os.path.join(BASE_DIR, 'database.db')
@@ -125,21 +129,63 @@ def memo():
     return render_template('memo.html', memos=memos)
 
 
+# SOLUTION 3: Resolve hostname and block private/loopback/link-local/reserved IPs
+MAX_BYTES = 4096
+
+# resolve hostname to IP addresses and check whether any address is private/loopback/link-local/multicast/reserved, returning True if a disallowed IP is found.
+def host_resolves_to_disallowed_ip(hostname: str) -> bool:
+    infos = socket.getaddrinfo(hostname, None, proto=socket.IPPROTO_TCP)
+    for family, _, _, _, sockaddr in infos:
+        ip_str = sockaddr[0]
+        try:
+            ip = ipaddress.ip_address(ip_str)
+            if (ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_multicast or ip.is_reserved):
+                return True
+        except ValueError:
+            continue
+    return False
+
+
 @app.route('/Fetch', methods=['GET', 'POST'])
 def fetch():
     content = None
     url = ''
     if request.method == 'POST':
-        url = request.form.get('url', '')
+        url = request.form.get('url', '').strip()
+
+        # SOLUTION 3: Only allow http/https schemes and disallow with host_resolves_to_disallowed_ip
+        parsed = urlparse(url)
+    
+        if parsed.scheme not in ('http', 'https'):
+            content = 'Only http and https URLs are allowed'
+            return render_template('fetch.html', url=url, content=content)
+
+        hostname = parsed.hostname      
+
+        if host_resolves_to_disallowed_ip(hostname):
+            content = 'Blocked URL (resolves to internal or disallowed IP address)'
+            return render_template('fetch.html', url=url, content=content)
+
+        # VULNERABILITY 3: Server-Side Request Forgery
         try:
-            r = requests.get(url, timeout=10)
-            content = r.text[:4096]
+            # r = requests.get(url, timeout=10)
+            # content = r.text[:4096]
+            # SOLUTION 3: Use a streamed request, limiting bytes read, and not allowing redirects
+            r = requests.get(url, timeout=10, allow_redirects=False, stream=True)
+            buf = []
+            read = 0
+            for chunk in r.iter_content(chunk_size=1024):
+                read += len(chunk)
+                if read > MAX_BYTES:
+                    buf.append(chunk[: MAX_BYTES - (read - len(chunk))])
+                    break
+                buf.append(chunk)
+            content = b''.join(buf).decode('utf-8', errors='replace')
         except Exception as e:
             content = f'Error: {e}'
+
     return render_template('fetch.html', url=url, content=content)
 
-import re
-import ipaddress
 
 # SOLUTION 2: Input Validation
 _HOSTNAME_RE = re.compile(r'^[A-Za-z0-9]([A-Za-z0-9\.-]{0,253}[A-Za-z0-9])?$')
