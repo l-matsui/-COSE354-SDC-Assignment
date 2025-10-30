@@ -10,6 +10,7 @@ from flask import Flask, request, session, g, render_template, redirect, url_for
 import re
 import socket
 import ipaddress
+from pathlib. import Path
 
 BASE_DIR = os.path.dirname(__file__)
 DB_PATH = os.path.join(BASE_DIR, 'database.db')
@@ -243,22 +244,46 @@ def ping_host():
     return render_template('ping.html', ip=ip_address, result=result)
 
 
+
 @app.route('/ViewFile')
 def view_file():
     raw = request.args.get('filename', '')
     content = None
     error = None
     if raw:
-        sanitized = raw.replace('../', '', 1)
-        decoded = unquote(sanitized)
-        file_path = os.path.join(LOG_DIR, decoded + '.log')
-        if '\x00' in file_path:
-            file_path = file_path.split('\x00', 1)[0]
+        # VULNERABILITY 4: Path Traversal
+        # sanitized = raw.replace('../', '', 1)
+        # decoded = unquote(sanitized)
+        # file_path = os.path.join(LOG_DIR, decoded + '.log')
+        # if '\x00' in file_path:
+        #     file_path = file_path.split('\x00', 1)[0]
+        # try:
+        #     with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+        #         content = f.read()
+
+        # SOLUTION 4: Canonicalization with pathlib+ checks inside LOG_DIR
+        # Decode URL input, strip NULs, and join with LOG_DIR + ".log" to form a normalized file path
+        decoded = unquote(raw)
+        decoded = decoded.split('\x00', 1)[0]
+        candidate = Path(LOG_DIR) / (decoded + '.log')
+
         try:
-            with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+            # Resolve both base and candidate to absolute paths
+            base_resolved = Path(LOG_DIR).resolve(strict=False)
+            candidate_resolved = candidate.resolve(strict=False)
+
+            # Check candidate is inside base directory
+            try:
+                candidate_resolved.relative_to(base_resolved)
+            except ValueError:
+                error = 'Access denied'
+                return render_template('view.html', filename=raw, content=content, error=error)
+
+            with candidate_resolved.open('r', encoding='utf-8', errors='ignore') as f:
                 content = f.read()
         except Exception as e:
             error = str(e)
+
     return render_template('view.html', filename=raw, content=content, error=error)
 
 
