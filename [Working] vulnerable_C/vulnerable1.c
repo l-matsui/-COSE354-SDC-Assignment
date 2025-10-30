@@ -8,11 +8,20 @@ void func(){
     
     printf("Seceret message : %s\n",seceret);
     
+    // VULNERABILITY: gets() is vulnerable to Buffer Overflow
     printf("Input : ");
-    gets(buffer);
+    // gets(buffer);
+    // SOLUTION: Replace with safe function fgets()
+    if (fgets(buffer, sizeof(buffer), stdin) == NULL) {
+        printf("Input Error\n");
+        exit(1);
+    }
 
-    if (strcmp(seceret, "COSE354") == 0){
-        printf("Please patch this code!");
+    // VULNERABILITY: strcmp() can cause issues if strings are not properly null-terminated
+    // if (strcmp(seceret, "COSE354") == 0){
+    // SOLUTION: Use strncmp() with length limit
+    if (strncmp(seceret, "COSE354", sizeof(seceret)) == 0){
+        printf("Please patch this code!\n");
     } else {
         printf("Try again!");
         exit(1);
