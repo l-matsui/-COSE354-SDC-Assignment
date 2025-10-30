@@ -11,14 +11,32 @@ import re
 import socket
 import ipaddress
 from pathlib. import Path
+import secrets
+import logging
 
 BASE_DIR = os.path.dirname(__file__)
 DB_PATH = os.path.join(BASE_DIR, 'database.db')
 LOG_DIR = os.path.join(BASE_DIR, 'logs')
 
-
+# VULNERABILITY 5: Hard-coded secret key & debug mode
 app = Flask(__name__)
-app.secret_key = 'very_very_secret'
+# app.secret_key = 'very_very_secret'
+
+# SOLUTION 5: Prefer secret from env; generate ephemeral for dev only and log a warning.
+_secret = os.getenv('FLASK_SECRET_KEY') or os.getenv('SECRET_KEY')
+if not _secret:
+    _secret = secrets.token_urlsafe(32)
+    logging.warning(
+        "No FLASK_SECRET_KEY found, set FLASK_SECRET_KEY in your environment"
+    )
+app.secret_key = _secret
+
+# SOLUTION 5: Safe defaults for cookies to prevent JS access, Cross site request forgery
+app.config.update(
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SAMESITE='Lax',
+    SESSION_COOKIE_SECURE=os.getenv('FLASK_COOKIE_SECURE', '0') in ('1', 'true', 'True'),
+)
 
 
 def get_db():
@@ -292,7 +310,10 @@ def logout():
     session.clear()
     return redirect(url_for('login'))
 
+# SOLUTION 5: Control debug from env
+DEBUG_MODE = os.getenv('FLASK_DEBUG', '0').lower() in ('1','true','yes')
 
 if __name__ == '__main__':
-    init_db()
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    # init_db()
+    # app.run(host='0.0.0.0', port=5000, debug=True)
+    app.run(host='0.0.0.0', port=int(os.getenv('PORT', 5000)), debug=DEBUG_MODE)
