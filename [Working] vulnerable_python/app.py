@@ -81,9 +81,12 @@ def login():
         password = request.form.get('password', '')
         db = get_db()
         cur = db.cursor()
-        query = "SELECT * FROM users WHERE username = '" + username + "' AND password = '" + password + "'"
+        # VULNERABILITY 1: SQL Injection
+        # query = "SELECT * FROM users WHERE username = '" + username + "' AND password = '" + password + "'"
+        # SOLUTION 1: Parameterize the Query
+        query = "SELECT * FROM users WHERE username = ? AND password = ?"
         try:
-            cur.execute(query)
+            cur.execute(query, (username, password))
             user = cur.fetchone()
             if user:
                 session['user_id'] = user['id']
@@ -135,19 +138,54 @@ def fetch():
             content = f'Error: {e}'
     return render_template('fetch.html', url=url, content=content)
 
+import re
+import ipaddress
+
+# SOLUTION 2: Input Validation
+_HOSTNAME_RE = re.compile(r'^[A-Za-z0-9]([A-Za-z0-9\.-]{0,253}[A-Za-z0-9])?$')
+
+def is_valid_hostname(host: str) -> bool:
+    return bool(_HOSTNAME_RE.match(host))
+
+def is_valid_ip_or_hostname(value: str) -> bool:
+    try:
+        ipaddress.ip_address(value)
+        return True
+    except ValueError:
+        return is_valid_hostname(value)
 
 @app.route('/Ping', methods=['GET', 'POST'])
-def ping():
+def ping_host():
     ip_address = ''
     result = None
+
     if request.method == 'POST':
-        ip_address = request.form.get('ip', '')
+        ip_address = request.form.get('ip', '').strip()
+
+        if not ip_address:
+            return render_template('ping.html', ip=ip_address, result='No host provided')
+
+        # reject inputs that start with - so they can't be interpreted as ping options
+        if ip_address.startswith('-'):
+            return render_template('ping.html', ip=ip_address, result='Invalid host (starts with "-")')
+
+        # reject inputs containing whitespace/control chars that could be used to inject extra args
+        if any(ch.isspace() for ch in ip_address):
+            return render_template('ping.html', ip=ip_address, result='Invalid host (contains whitespace)')
+
+        # validates host: accept either a proper hostname or IP
+        if not is_valid_ip_or_hostname(ip_address):
+            return render_template('ping.html', ip=ip_address, result='Invalid hostname or IP')
+
         count_flag = '-n' if os.name == 'nt' else '-c'
-        command = "ping " + count_flag + " 3 " + ip_address
+        # VULNERABILITY 2: Command Injection
+        # command = ['ping', count_flag, '3', ip_address]
+        # SOLUTION 2: Build argv list (without shell) to avoid shell interpolation
+        command = ['ping', count_flag, '3', ip_address]
         try:
             completed = subprocess.run(
                 command,
-                shell=True,
+                # shell = True
                 capture_output=True,
                 text=True,
                 timeout=15,
@@ -155,6 +193,7 @@ def ping():
             result = completed.stdout or completed.stderr
         except Exception as e:
             result = f'Error running command: {e}'
+
     return render_template('ping.html', ip=ip_address, result=result)
 
 
